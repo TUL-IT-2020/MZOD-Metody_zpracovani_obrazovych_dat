@@ -1,11 +1,3 @@
-# conda activate
-# conda create --name MZOD
-# conda install pip
-## because pycharm :/ 
-# pip install opencv-python==4.5.5.62
-# pip install PyQt5
-# pip install pypylon
-
 from pypylon import pylon
 import cv2
 
