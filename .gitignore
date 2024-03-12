@@ -3,6 +3,7 @@
 
 ### My configuration ###
 *.zip
+*.ZIP
 *.pptx
 
 
