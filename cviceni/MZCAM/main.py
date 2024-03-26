@@ -7,9 +7,12 @@ import os
 import sys
 from PyQt5 import QtGui, QtCore, QtWidgets
 from pypylon import pylon
+from CustomWidget import CustomWidget
 
+DEBUG = True
 
 class MainWindow(QtWidgets.QMainWindow):
+
     def __init__(self):
         QtWidgets.QMainWindow.__init__(self)
 
@@ -41,6 +44,29 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.timer = None
 
+        # config
+        self.TIMER_INTERVAL = 1000/30
+        self.TIMER_INTERVAL = 1000/25
+
+        self.exposure_options = {
+            'off': 'Off',
+            'once': 'Once',
+            'continuous': 'Continuous',
+            'custom': 'Custom'
+        }
+        self.selected_exposure_option = 'off'
+        self.last_exposure = None
+
+        self.gain_options = {
+            'off': 'Off',
+            'once': 'Once',
+            'continuous': 'Continuous',
+            'custom': 'Custom'
+        }
+        self.selected_gain_option = 'off'
+        self.last_gain = None
+
+
     def setup_ui(self):
         self.resize(1200, 800)
         self.central_widget = QtWidgets.QWidget(self)
@@ -61,9 +87,61 @@ class MainWindow(QtWidgets.QMainWindow):
         self.grid_layout.addWidget(self.button_connect, 0, 1, 1, 1)
         self.button_connect.clicked.connect(self.cam_connect)
 
+
+        # Box layout for exposure
+        self.box_layout = QtWidgets.QHBoxLayout()
+        self.grid_layout.addLayout(self.box_layout, 2, 0, 1, 2)
+
+        # label - box
+        self.label_exposure = QtWidgets.QLabel(self)
+        self.label_exposure.setText('Exposure')
+        self.box_layout.addWidget(self.label_exposure)
+        
+        # combobox
+        self.combo_box_trigger = QtWidgets.QComboBox(self)
+        for opt in self.exposure_options.keys():
+            self.combo_box_trigger.addItem(opt)
+        self.combo_box_trigger.currentIndexChanged.connect(self.combobox_idx_changed_set_exposure)
+        self.box_layout.addWidget(self.combo_box_trigger)
+
+        # camera exposure
+        # label
+        self.box_layout.addWidget(QtWidgets.QLabel('Exposure time [ms]:'))
+        # slider
+        self.slider_exposure = QtWidgets.QSlider(QtCore.Qt.Horizontal, self)
+        self.slider_exposure.setRange(0, 100)
+        self.slider_exposure.valueChanged.connect(self.slider_changed)
+        self.box_layout.addWidget(self.slider_exposure)
+        # slider - value
+        self.label_slider_exposure = QtWidgets.QLabel(self)
+        self.label_slider_exposure.setText('0')
+        self.box_layout.addWidget(self.label_slider_exposure)
+
+        # camera gain
+        # Box layout for gain
+        self.gain_box = QtWidgets.QHBoxLayout()
+        self.grid_layout.addLayout(self.gain_box, 3, 0, 1, 2)
+
+        # label - box
+        self.label_gain = QtWidgets.QLabel(self)
+        self.label_gain.setText('Gain')
+        self.gain_box.addWidget(self.label_gain)
+
+        # combobox
+        self.gain_combo_box = QtWidgets.QComboBox(self)
+        for opt in self.gain_options.keys():
+            self.gain_combo_box.addItem(opt)
+        self.gain_combo_box.currentIndexChanged.connect(self.combobox_idx_changed_set_gain)
+        self.gain_box.addWidget(self.gain_combo_box)
+
+        # slider
+        self.gain_widget = CustomWidget('Gain', 0, 100, 50)
+        self.gain_box.addWidget(self.gain_widget)
+
+
         # camera refresh timer
         self.timer = QtCore.QTimer(self)
-        self.timer.setInterval(int(1000/30))
+        self.timer.setInterval(int(self.TIMER_INTERVAL))
         self.timer.timeout.connect(self.cam_grab)
 
         # camera image display
@@ -72,6 +150,20 @@ class MainWindow(QtWidgets.QMainWindow):
         self.grid_layout.addWidget(self.gb_image, 1, 0, 1, 2)
 
         self.setCentralWidget(self.central_widget)
+
+    
+    def slider_changed(self):
+        sl = self.sender()
+        self.label_slider_exposure.setText(f'{sl.value()/1000} ms')
+
+    
+    def combobox_idx_changed_set_exposure(self):
+        cb = self.sender()
+        self.selected_exposure_option = cb.currentText()
+
+    def combobox_idx_changed_set_gain(self):
+        cb = self.sender()
+        self.selected_gain_option = cb.currentText()
 
     @staticmethod
     def load_settings():
@@ -159,6 +251,24 @@ class MainWindow(QtWidgets.QMainWindow):
             self.converter = pylon.ImageFormatConverter()
             self.converter.OutputPixelFormat = pylon.PixelType_BGR8packed
             self.converter.OutputBitAlignment = pylon.OutputBitAlignment_MsbAligned
+            
+            # exposure time
+            # mSec - 1000
+            minimum_exposure_time = int(self.camera.ExposureTime.GetMin())
+            maximum_exposure_time = int(self.camera.ExposureTime.GetMax())
+            if DEBUG:
+                print(f'Exposure time range: {minimum_exposure_time} - {maximum_exposure_time} us')
+            time_range = 200
+            if time_range*minimum_exposure_time < maximum_exposure_time:
+                maximum_exposure_time = time_range*minimum_exposure_time
+            self.slider_exposure.setRange(minimum_exposure_time, maximum_exposure_time)
+
+            # gain
+            minimum_gain = int(self.camera.Gain.GetMin())
+            maximum_gain = int(self.camera.Gain.GetMax())
+            if DEBUG:
+                print(f'Gain range: {minimum_gain} - {maximum_gain}')
+            self.gain_widget.CustomSlider.setRange(minimum_gain, maximum_gain)
 
             # grab each Xms
             # todo: configurable
@@ -204,6 +314,56 @@ class MainWindow(QtWidgets.QMainWindow):
             frame = self.converter.Convert(grab_result).GetArray()
 
             self.button_connect.setText('Disconnect')
+
+            # conversion to QImage
+            height, width, channel = frame.shape
+            bytes_per_line = 3 * width
+            q_img = QtGui.QImage(frame.data, width, height, bytes_per_line, QtGui.QImage.Format_RGB888).rgbSwapped()
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            mean = np.mean(gray)
+            goal = 255/2
+
+            # camera exposure
+            option = self.exposure_options[self.selected_exposure_option]
+            if self.selected_exposure_option == 'off':
+                self.camera.ExposureAuto.SetValue('Off')
+                self.camera.ExposureTime.SetValue(self.slider_exposure.value())
+            if self.selected_exposure_option == 'custom':
+                self.camera.ExposureAuto.SetValue('Off')
+                exposure_time = self.camera.ExposureTime.GetValue()
+                self.slider_exposure.setValue(int(exposure_time))
+                exposure_time = goal/mean * exposure_time
+                exposure_time = min(exposure_time, self.camera.ExposureTime.GetMax())
+                exposure_time = max(exposure_time, self.camera.ExposureTime.GetMin())
+                self.camera.ExposureTime.SetValue(int(exposure_time))
+            else:
+                if self.last_exposure != self.selected_exposure_option:
+                    self.camera.ExposureAuto.SetValue(option)
+            
+            if DEBUG and self.last_exposure != self.selected_exposure_option:
+                print(f'Exposure set to: {option}')
+            self.last_exposure = self.selected_exposure_option
+            
+            # camera gain
+            option = self.gain_options[self.selected_gain_option]
+            if self.selected_gain_option == 'off':
+                self.camera.GainAuto.SetValue('Off')
+                self.camera.Gain.SetValue(self.gain_widget.CustomSlider.value())
+            if self.selected_gain_option == 'custom':
+                self.camera.GainAuto.SetValue('Off')
+                gain = self.camera.Gain.GetValue()
+                self.gain_widget.CustomSlider.setValue(int(gain))
+                gain = goal/mean * gain
+                gain = min(gain, self.camera.Gain.GetMax())
+                gain = max(gain, self.camera.Gain.GetMin())
+                self.camera.Gain.SetValue(int(gain))
+            else:
+                if self.last_gain != self.selected_gain_option:
+                    self.camera.GainAuto.SetValue(option)
+            
+            if DEBUG and self.last_gain != self.selected_gain_option:
+                print(f'Gain set to: {option}')
+            self.last_gain = self.selected_gain_option
 
             # conversion to QImage
             height, width, channel = frame.shape
