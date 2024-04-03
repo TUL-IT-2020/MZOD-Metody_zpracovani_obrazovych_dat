@@ -8,6 +8,7 @@ import sys
 from PyQt5 import QtGui, QtCore, QtWidgets
 from pypylon import pylon
 from CustomWidget import CustomWidget
+from my_libs import *
 
 DEBUG = True
 
@@ -243,7 +244,8 @@ class MainWindow(QtWidgets.QMainWindow):
             # open camera, set output format
             # todo: configurable
             self.camera.Open()
-            self.camera.PixelFormat.SetValue('RGB8')
+            #self.camera.PixelFormat.SetValue('RGB8')
+            self.camera.PixelFormat.SetValue('BayerGR8')
             self.camera.StartGrabbing(pylon.GrabStrategy_OneByOne)
 
             # converter
@@ -309,9 +311,9 @@ class MainWindow(QtWidgets.QMainWindow):
                 return None
 
             # TODO: to get raw array
-            # grab_result.GetArray()
+            frame = deBayer(grab_result.GetArray())
             # TODO: custom conversion
-            frame = self.converter.Convert(grab_result).GetArray()
+            #frame = self.converter.Convert(grab_result).GetArray()
 
             self.button_connect.setText('Disconnect')
 
