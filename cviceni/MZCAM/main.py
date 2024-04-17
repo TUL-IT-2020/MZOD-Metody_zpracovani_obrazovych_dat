@@ -46,8 +46,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self.timer = None
 
         # config
+        self.TRIGGER_TIME = 200
         self.TIMER_INTERVAL = 1000/30
         self.TIMER_INTERVAL = 1000/25
+        self.SHOW_CHANNELS = False
+        self.SHOW_HISTOGRAM = True
+        self.EQUALIZATION = True
 
         self.exposure_options = {
             'off': 'Off',
@@ -66,6 +70,9 @@ class MainWindow(QtWidgets.QMainWindow):
         }
         self.selected_gain_option = 'off'
         self.last_gain = None
+
+        self.chanel_formats = ['RGB', 'YUV', 'HSV']
+        self.selected_chanel_format = 'RGB'
 
 
     def setup_ui(self):
@@ -88,10 +95,35 @@ class MainWindow(QtWidgets.QMainWindow):
         self.grid_layout.addWidget(self.button_connect, 0, 1, 1, 1)
         self.button_connect.clicked.connect(self.cam_connect)
 
+        # camera refresh timer
+        self.timer = QtCore.QTimer(self)
+        self.timer.setInterval(int(self.TIMER_INTERVAL))
+        self.timer.timeout.connect(self.cam_grab)
 
+        # camera image display
+        self.ref_pixmap = QtGui.QPixmap('micro.png')
+        self.gb_image, self.image = self.create_groupbox_image(self, 'Captured Image', self.ref_pixmap)
+        self.grid_layout.addWidget(self.gb_image, 1, 0, 1, 1)
+        
+        if self.SHOW_CHANNELS:
+            # channel images
+            channels = ['Channel 0', 'Channel 1', 'Channel 2']
+            self.image_chanel = [[] for _ in range(len(channels))]
+            self.gb_chanel = [[] for _ in range(len(channels))]
+            for i, channel in enumerate(channels):
+                self.gb_chanel[i], self.image_chanel[i] = self.create_groupbox_image(self, channel, self.ref_pixmap)
+
+            self.grid_layout.addWidget(self.gb_chanel[0], 1, 1, 1, 1)
+            self.grid_layout.addWidget(self.gb_chanel[1], 2, 0, 1, 1)
+            self.grid_layout.addWidget(self.gb_chanel[2], 2, 1, 1, 1)
+        elif self.SHOW_HISTOGRAM:
+            # histogram
+            self.gb_histogram, self.image_histogram = self.create_groupbox_image(self, 'Histogram', self.ref_pixmap)
+            self.grid_layout.addWidget(self.gb_histogram, 1, 1, 1, 1)
+        
         # Box layout for exposure
         self.box_layout = QtWidgets.QHBoxLayout()
-        self.grid_layout.addLayout(self.box_layout, 2, 0, 1, 2)
+        self.grid_layout.addLayout(self.box_layout, 3, 0, 1, 1)
 
         # label - box
         self.label_exposure = QtWidgets.QLabel(self)
@@ -121,7 +153,7 @@ class MainWindow(QtWidgets.QMainWindow):
         # camera gain
         # Box layout for gain
         self.gain_box = QtWidgets.QHBoxLayout()
-        self.grid_layout.addLayout(self.gain_box, 3, 0, 1, 2)
+        self.grid_layout.addLayout(self.gain_box, 4, 0, 1, 1)
 
         # label - box
         self.label_gain = QtWidgets.QLabel(self)
@@ -139,17 +171,20 @@ class MainWindow(QtWidgets.QMainWindow):
         self.gain_widget = CustomWidget('Gain', 0, 100, 50)
         self.gain_box.addWidget(self.gain_widget)
 
-
-        # camera refresh timer
-        self.timer = QtCore.QTimer(self)
-        self.timer.setInterval(int(self.TIMER_INTERVAL))
-        self.timer.timeout.connect(self.cam_grab)
-
-        # camera image display
-        self.ref_pixmap = QtGui.QPixmap('micro.png')
-        self.gb_image, self.image = self.create_groupbox_image(self, 'Captured Image', self.ref_pixmap)
-        self.grid_layout.addWidget(self.gb_image, 1, 0, 1, 2)
-
+        if self.SHOW_CHANNELS:
+        # channel format
+            self.channel_combo_box = QtWidgets.QComboBox(self)
+            for opt in self.chanel_formats:
+                self.channel_combo_box.addItem(opt)
+            self.channel_combo_box.currentIndexChanged.connect(self.combobox_idx_changed_set_channel)
+            self.grid_layout.addWidget(self.channel_combo_box, 4, 1, 1, 1)
+        if self.SHOW_HISTOGRAM:
+            # checkbox
+            self.checkbox = QtWidgets.QCheckBox('Equalization')
+            self.checkbox.setChecked(True)
+            self.checkbox.stateChanged.connect(self.checkbox_state_changed)
+            self.grid_layout.addWidget(self.checkbox, 5, 0, 1, 1)
+        # set layout
         self.setCentralWidget(self.central_widget)
 
     
@@ -165,6 +200,14 @@ class MainWindow(QtWidgets.QMainWindow):
     def combobox_idx_changed_set_gain(self):
         cb = self.sender()
         self.selected_gain_option = cb.currentText()
+    
+    def combobox_idx_changed_set_channel(self):
+        cb = self.sender()
+        self.selected_chanel_format = cb.currentText()
+
+    def checkbox_state_changed(self):
+        cb = self.sender()
+        self.EQUALIZATION = cb.isChecked()
 
     @staticmethod
     def load_settings():
@@ -279,21 +322,18 @@ class MainWindow(QtWidgets.QMainWindow):
 
     # grab frame from camera
     def cam_grab(self):
-
-        trigger_time = 200
-
         if self.camera:
 
             # run only once and only in trigger mode
             if 'sw_trigger' not in self.settings:
                 self.settings['sw_trigger'] = True
                 try:
-                    self.camera.WaitForFrameTriggerReady(trigger_time, pylon.TimeoutHandling_ThrowException)
+                    self.camera.WaitForFrameTriggerReady(self.TRIGGER_TIME, pylon.TimeoutHandling_ThrowException)
                 except pylon.GenericException as ex:
                     self.settings['sw_trigger'] = False
 
             if self.settings['sw_trigger']:
-                if self.camera.WaitForFrameTriggerReady(trigger_time, pylon.TimeoutHandling_Return):
+                if self.camera.WaitForFrameTriggerReady(self.TRIGGER_TIME, pylon.TimeoutHandling_Return):
                     self.camera.ExecuteSoftwareTrigger()
             else:
                 # should do some trigger time loop
@@ -321,6 +361,9 @@ class MainWindow(QtWidgets.QMainWindow):
             height, width, channel = frame.shape
             bytes_per_line = 3 * width
             q_img = QtGui.QImage(frame.data, width, height, bytes_per_line, QtGui.QImage.Format_RGB888).rgbSwapped()
+            RGB = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            YUV = cv2.cvtColor(frame, cv2.COLOR_BGR2YUV)
+            Y = YUV[..., 0]
             gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
             mean = np.mean(gray)
             goal = 255/2
@@ -367,11 +410,40 @@ class MainWindow(QtWidgets.QMainWindow):
                 print(f'Gain set to: {option}')
             self.last_gain = self.selected_gain_option
 
-            # conversion to QImage
-            height, width, channel = frame.shape
-            bytes_per_line = 3 * width
-            q_img = QtGui.QImage(frame.data, width, height, bytes_per_line, QtGui.QImage.Format_RGB888).rgbSwapped()
+            # equalization
+            if self.EQUALIZATION:
+                RGB = equalize_color(RGB)
+                frame = cv2.cvtColor(RGB, cv2.COLOR_BGR2RGB)
+                q_img = QtGui.QImage(frame.data, width, height, bytes_per_line, QtGui.QImage.Format_RGB888).rgbSwapped()
+
+            # display image
             self.image.load_pixmap(QtGui.QPixmap(q_img))
+
+            # channel split
+            if self.SHOW_CHANNELS:
+                if self.selected_chanel_format == 'RGB':
+                    channels = frame
+                elif self.selected_chanel_format == 'YUV':
+                    channels = RGB_to_YUV(frame)
+                elif self.selected_chanel_format == 'HSV':
+                    raise NotImplementedError
+                else:
+                    channels = frame
+                height, width, channel = channels.shape
+                
+                n_channels = 3
+                for i in range(n_channels):
+                    channel_data = np.repeat(channels[..., i][:, :, np.newaxis], n_channels, axis=2)
+                    q_img = QtGui.QImage(channel_data, width, height, bytes_per_line, QtGui.QImage.Format_RGB888)
+                    self.image_chanel[i].load_pixmap(QtGui.QPixmap(q_img))
+            if self.SHOW_HISTOGRAM:
+                hist = cv2.calcHist([Y], [0], None, [256], [0, 256])
+                hist = hist / np.max(hist) * 400
+                hist_img = np.zeros((400, 256, 3), np.uint8)
+                for i in range(256):
+                    cv2.line(hist_img, (i, 400), (i, 400 - int(hist[i])), (255, 255, 255), 1)
+                q_img = QtGui.QImage(hist_img.data, 256, 400, 256*3, QtGui.QImage.Format_RGB888).rgbSwapped()
+                self.image_histogram.load_pixmap(QtGui.QPixmap(q_img))
 
     # camera stop
     def cam_stop(self):
