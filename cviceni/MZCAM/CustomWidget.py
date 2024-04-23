@@ -40,3 +40,6 @@ class CustomWidget(QtWidgets.QWidget):
     def valueChanged(self):
         sl = self.sender()
         self.CustomLabelValue.setText(str(sl.value()))
+
+    def get_value(self):
+        return self.CustomSlider.value()

@@ -41,7 +41,6 @@ def deBayer(img, format='super_pixel'):
         img_out[..., 2] = B
         return img_out
 
-    print(img.shape)
 
     if format == 'super_pixel':
         img_out = super_pixel(img)

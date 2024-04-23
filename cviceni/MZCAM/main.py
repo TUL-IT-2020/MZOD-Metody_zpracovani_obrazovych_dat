@@ -12,6 +12,7 @@ from my_libs import *
 
 DEBUG = True
 
+
 class MainWindow(QtWidgets.QMainWindow):
 
     def __init__(self):
@@ -47,8 +48,8 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # config
         self.TRIGGER_TIME = 200
-        self.TIMER_INTERVAL = 1000/30
-        self.TIMER_INTERVAL = 1000/25
+        self.TIMER_INTERVAL = 1000 / 30
+        self.TIMER_INTERVAL = 1000 / 25
         self.SHOW_CHANNELS = False
         self.SHOW_HISTOGRAM = True
         self.EQUALIZATION = True
@@ -73,7 +74,6 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.chanel_formats = ['RGB', 'YUV', 'HSV']
         self.selected_chanel_format = 'RGB'
-
 
     def setup_ui(self):
         self.resize(1200, 800)
@@ -104,7 +104,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ref_pixmap = QtGui.QPixmap('micro.png')
         self.gb_image, self.image = self.create_groupbox_image(self, 'Captured Image', self.ref_pixmap)
         self.grid_layout.addWidget(self.gb_image, 1, 0, 1, 1)
-        
+
         if self.SHOW_CHANNELS:
             # channel images
             channels = ['Channel 0', 'Channel 1', 'Channel 2']
@@ -120,7 +120,7 @@ class MainWindow(QtWidgets.QMainWindow):
             # histogram
             self.gb_histogram, self.image_histogram = self.create_groupbox_image(self, 'Histogram', self.ref_pixmap)
             self.grid_layout.addWidget(self.gb_histogram, 1, 1, 1, 1)
-        
+
         # Box layout for exposure
         self.box_layout = QtWidgets.QHBoxLayout()
         self.grid_layout.addLayout(self.box_layout, 3, 0, 1, 1)
@@ -129,7 +129,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.label_exposure = QtWidgets.QLabel(self)
         self.label_exposure.setText('Exposure')
         self.box_layout.addWidget(self.label_exposure)
-        
+
         # combobox
         self.combo_box_trigger = QtWidgets.QComboBox(self)
         for opt in self.exposure_options.keys():
@@ -172,7 +172,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.gain_box.addWidget(self.gain_widget)
 
         if self.SHOW_CHANNELS:
-        # channel format
+            # channel format
             self.channel_combo_box = QtWidgets.QComboBox(self)
             for opt in self.chanel_formats:
                 self.channel_combo_box.addItem(opt)
@@ -185,14 +185,20 @@ class MainWindow(QtWidgets.QMainWindow):
             self.checkbox.stateChanged.connect(self.checkbox_state_changed)
             self.grid_layout.addWidget(self.checkbox, 5, 0, 1, 1)
         # set layout
+
+        self.r_slider_widget = CustomWidget('Red', 1, 255, 125)
+        self.grid_layout.addWidget(self.r_slider_widget, 3, 1, 1, 1)
+        self.g_slider_widget = CustomWidget('Green', 1, 255, 125)
+        self.grid_layout.addWidget(self.g_slider_widget, 4, 1, 1, 1)
+        self.b_slider_widget = CustomWidget('Blue', 1, 255, 255)
+        self.grid_layout.addWidget(self.b_slider_widget, 5, 1, 1, 1)
+
         self.setCentralWidget(self.central_widget)
 
-    
     def slider_changed(self):
         sl = self.sender()
-        self.label_slider_exposure.setText(f'{sl.value()/1000} ms')
+        self.label_slider_exposure.setText(f'{sl.value() / 1000} ms')
 
-    
     def combobox_idx_changed_set_exposure(self):
         cb = self.sender()
         self.selected_exposure_option = cb.currentText()
@@ -200,7 +206,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def combobox_idx_changed_set_gain(self):
         cb = self.sender()
         self.selected_gain_option = cb.currentText()
-    
+
     def combobox_idx_changed_set_channel(self):
         cb = self.sender()
         self.selected_chanel_format = cb.currentText()
@@ -287,7 +293,7 @@ class MainWindow(QtWidgets.QMainWindow):
             # open camera, set output format
             # todo: configurable
             self.camera.Open()
-            #self.camera.PixelFormat.SetValue('RGB8')
+            # self.camera.PixelFormat.SetValue('RGB8')
             self.camera.PixelFormat.SetValue('BayerGR8')
             self.camera.StartGrabbing(pylon.GrabStrategy_OneByOne)
 
@@ -296,7 +302,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.converter = pylon.ImageFormatConverter()
             self.converter.OutputPixelFormat = pylon.PixelType_BGR8packed
             self.converter.OutputBitAlignment = pylon.OutputBitAlignment_MsbAligned
-            
+
             # exposure time
             # mSec - 1000
             minimum_exposure_time = int(self.camera.ExposureTime.GetMin())
@@ -304,8 +310,8 @@ class MainWindow(QtWidgets.QMainWindow):
             if DEBUG:
                 print(f'Exposure time range: {minimum_exposure_time} - {maximum_exposure_time} us')
             time_range = 200
-            if time_range*minimum_exposure_time < maximum_exposure_time:
-                maximum_exposure_time = time_range*minimum_exposure_time
+            if time_range * minimum_exposure_time < maximum_exposure_time:
+                maximum_exposure_time = time_range * minimum_exposure_time
             self.slider_exposure.setRange(minimum_exposure_time, maximum_exposure_time)
 
             # gain
@@ -317,7 +323,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
             # grab each Xms
             # todo: configurable
-            self.timer.start(int(1000/60))
+            self.timer.start(int(1000 / 60))
             self.button_connect.setText('Disconnect')
 
     # grab frame from camera
@@ -353,7 +359,7 @@ class MainWindow(QtWidgets.QMainWindow):
             # TODO: to get raw array
             frame = deBayer(grab_result.GetArray())
             # TODO: custom conversion
-            #frame = self.converter.Convert(grab_result).GetArray()
+            # frame = self.converter.Convert(grab_result).GetArray()
 
             self.button_connect.setText('Disconnect')
 
@@ -366,7 +372,7 @@ class MainWindow(QtWidgets.QMainWindow):
             Y = YUV[..., 0]
             gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
             mean = np.mean(gray)
-            goal = 255/2
+            goal = 255 / 2
 
             # camera exposure
             option = self.exposure_options[self.selected_exposure_option]
@@ -377,18 +383,18 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.camera.ExposureAuto.SetValue('Off')
                 exposure_time = self.camera.ExposureTime.GetValue()
                 self.slider_exposure.setValue(int(exposure_time))
-                exposure_time = goal/mean * exposure_time
+                exposure_time = goal / mean * exposure_time
                 exposure_time = min(exposure_time, self.camera.ExposureTime.GetMax())
                 exposure_time = max(exposure_time, self.camera.ExposureTime.GetMin())
                 self.camera.ExposureTime.SetValue(int(exposure_time))
             else:
                 if self.last_exposure != self.selected_exposure_option:
                     self.camera.ExposureAuto.SetValue(option)
-            
+
             if DEBUG and self.last_exposure != self.selected_exposure_option:
                 print(f'Exposure set to: {option}')
             self.last_exposure = self.selected_exposure_option
-            
+
             # camera gain
             option = self.gain_options[self.selected_gain_option]
             if self.selected_gain_option == 'off':
@@ -398,14 +404,14 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.camera.GainAuto.SetValue('Off')
                 gain = self.camera.Gain.GetValue()
                 self.gain_widget.CustomSlider.setValue(int(gain))
-                gain = goal/mean * gain
+                gain = goal / mean * gain
                 gain = min(gain, self.camera.Gain.GetMax())
                 gain = max(gain, self.camera.Gain.GetMin())
                 self.camera.Gain.SetValue(int(gain))
             else:
                 if self.last_gain != self.selected_gain_option:
                     self.camera.GainAuto.SetValue(option)
-            
+
             if DEBUG and self.last_gain != self.selected_gain_option:
                 print(f'Gain set to: {option}')
             self.last_gain = self.selected_gain_option
@@ -413,7 +419,14 @@ class MainWindow(QtWidgets.QMainWindow):
             # equalization
             if self.EQUALIZATION:
                 RGB = equalize_color(RGB)
-                frame = cv2.cvtColor(RGB, cv2.COLOR_BGR2RGB)
+                new_RGB = np.zeros_like(RGB)
+                R = 255 * RGB[:, :, 0].astype('int') / self.r_slider_widget.get_value()
+                G = 255 * RGB[:, :, 1].astype('int') / self.g_slider_widget.get_value()
+                B = 255 * RGB[:, :, 2].astype('int') / self.b_slider_widget.get_value()
+                new_RGB[:, :, 0] = np.clip(R, 0, 255).astype('uint8')
+                new_RGB[:, :, 1] = np.clip(G, 0, 255).astype('uint8')
+                new_RGB[:, :, 2] = np.clip(B, 0, 255).astype('uint8')
+                frame = cv2.cvtColor(new_RGB, cv2.COLOR_BGR2RGB)
                 q_img = QtGui.QImage(frame.data, width, height, bytes_per_line, QtGui.QImage.Format_RGB888).rgbSwapped()
 
             # display image
@@ -430,7 +443,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 else:
                     channels = frame
                 height, width, channel = channels.shape
-                
+
                 n_channels = 3
                 for i in range(n_channels):
                     channel_data = np.repeat(channels[..., i][:, :, np.newaxis], n_channels, axis=2)
@@ -442,7 +455,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 hist_img = np.zeros((400, 256, 3), np.uint8)
                 for i in range(256):
                     cv2.line(hist_img, (i, 400), (i, 400 - int(hist[i])), (255, 255, 255), 1)
-                q_img = QtGui.QImage(hist_img.data, 256, 400, 256*3, QtGui.QImage.Format_RGB888).rgbSwapped()
+                q_img = QtGui.QImage(hist_img.data, 256, 400, 256 * 3, QtGui.QImage.Format_RGB888).rgbSwapped()
                 self.image_histogram.load_pixmap(QtGui.QPixmap(q_img))
 
     # camera stop
