@@ -5,6 +5,8 @@
 *.zip
 *.ZIP
 *.pptx
+*.tiff
+*.bmp
 
 
 ### PyCharm ###
