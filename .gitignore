@@ -5,6 +5,7 @@
 *.zip
 *.ZIP
 *.pptx
+*.pptx#
 *.tiff
 *.bmp
 
