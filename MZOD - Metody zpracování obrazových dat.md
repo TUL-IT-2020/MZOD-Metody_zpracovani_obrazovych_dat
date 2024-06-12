@@ -8,4 +8,6 @@
 Otázky:
 -  Co je na obrázku? - AD převodníky
 
+3 otázky, jednu můžeme odmítnout. Na zbylé dvě musíme odpovědět.
+
 ## Poznámky
