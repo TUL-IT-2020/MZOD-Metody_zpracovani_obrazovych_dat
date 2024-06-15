@@ -17,11 +17,11 @@
 13) [[Přenos dat|Digitální sběrnice pro připojení čipů]] – DVP, LVDS, schéma 7:1, MIPI DSI a CSI – rychlosti, princip, počty vodičů
 14) Camera Link, CoaXPress, GiGE & USB3 Vision; GenICam
 15) Vyzařování, černé těleso, spektrum, žárovka, zářivka, LED
-16) Reflektory, nasvícení typy a topologie
-17) LASER a LASER LED (princip, využití); měření vzdálenosti ToF přímé a nepřímé, bodové a plošné, dot projektory, LIDAR, triangulace, mikrometry
-18) Předzpracování obrazu – histogram, ekvalizace, černý bod, white balance, gamma
-19) Filtrace ve frekvenční oblasti, DFT, konvoluce, základní konvoluční filtry, nelineární konvoluce
-20) Komprese – principy a techniky: RLE, Huffman, Aritmetické kódování, LZW, diferenciální
+16) [[Reflektory|Reflektory]], nasvícení typy a topologie
+17) [[LASER|LASER]] a LASER LED (princip, využití); měření vzdálenosti [[TOF|ToF]] přímé a nepřímé, bodové a plošné, dot projektory, [[LIDAR|LIDAR]], triangulace, mikrometry
+18) [[Předzpracování obrazu|Předzpracování obrazu]] – histogram, ekvalizace, černý bod, white balance, gamma
+19) Filtrace ve frekvenční oblasti, DFT, [[Konvoluce v obraze|konvoluce]], [[Hranové detektory|základní konvoluční filtry]], nelineární konvoluce
+20) [[Komprese obrazu|Komprese]] – principy a techniky: [[RLE - run length encoding|RLE]], [[Huffmanovo kódování|Huffman]], [[Aritmetické kódování|Aritmetické kódování]], [[LZW (Lempel-Ziv-Welchův algoritmus)|LZW]], diferenciální
 komprese
-21) JPEG, algoritmus, charakteristika
-22) Speciální snímače – UV, nebayerovské masky, NIR, LWIR; principy, charakteristiky, využití
+21) [[JPEG – DCT II|JPEG]], algoritmus, charakteristika
+22) [[Speciální kamery|Speciální snímače]] – UV, nebayerovské masky, NIR, LWIR; principy, charakteristiky, využití
